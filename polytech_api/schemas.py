@@ -1,11 +1,20 @@
-from typing import Literal
+from datetime import date
 
-from pydantic import BaseModel
-
-
-class PingRequest(BaseModel):
-    message: Literal["ping"] = "ping"
+from parser.schemas import Lesson
+from pydantic import BaseModel, Field, RootModel, model_validator
 
 
-class PingResponse(BaseModel):
-    message: Literal["pong"] = "pong"
+class ScheduleRequest(BaseModel):
+    group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
+    start: date = Field(default_factory=date.today)
+    end: date = Field(default_factory=date.today)
+
+    @model_validator(mode="after")
+    def validate_period(self) -> "ScheduleRequest":
+        if self.end < self.start:
+            raise ValueError("end не может быть раньше start")
+        return self
+
+
+class ScheduleResponse(RootModel[list[Lesson]]):
+    pass

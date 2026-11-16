@@ -10,9 +10,9 @@ router = Router(
     "api/",
     [
         path(
-            "ping/",
-            views.PingController.as_view(),
-            name="ping",
+            "schedule/",
+            views.ScheduleController.as_view(),
+            name="schedule",
         )
     ],
 )
