@@ -1,10 +1,13 @@
+from http import HTTPStatus
+
 from deadlines.models import Deadline, Group
 from django.http import JsonResponse
-from dmr import Body, Controller, Query
+from dmr import Body, Controller, Query, ResponseSpec, validate
 from dmr.plugins.pydantic import PydanticSerializer
 from parser.schedule import get_schedule_period
 
 from .schemas import (
+    DeadlineDeleteRequest,
     DeadlineRequest,
     DeadlineResponse,
     ScheduleRequest,
@@ -39,8 +42,12 @@ class DeadlineContoller(Controller[PydanticSerializer]):
             status=409,
         )
 
-    def delete(self, parsed_body: Body[int]) -> JsonResponse:
-        deleted, _ = Deadline.objects.filter(id=parsed_body).delete()
+    @validate(
+        ResponseSpec(dict[str, str], status_code=HTTPStatus.OK),
+        ResponseSpec(dict[str, str], status_code=HTTPStatus.NOT_FOUND),
+    )
+    def delete(self, parsed_query: Query[DeadlineDeleteRequest]) -> JsonResponse:
+        deleted, _ = Deadline.objects.filter(id=parsed_query.id).delete()
 
         if not deleted:
             return JsonResponse({"detail": "Запись не найдена"}, status=404)

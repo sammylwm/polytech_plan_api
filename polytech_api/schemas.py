@@ -27,6 +27,10 @@ class DeadlineRequest(BaseModel):
     group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
 
 
+class DeadlineDeleteRequest(BaseModel):
+    id: int
+
+
 class DeadlineResponse(DeadlineRequest):
     model_config = ConfigDict(from_attributes=True)
 
