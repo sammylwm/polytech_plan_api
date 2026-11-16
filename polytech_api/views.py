@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 from deadlines.models import Deadline, Group
 from django.http import JsonResponse
-from dmr import Body, Controller, Query, ResponseSpec, validate
+from dmr import APIError, Body, Controller, Query, ResponseSpec, modify, validate
 from dmr.plugins.pydantic import PydanticSerializer
 from parser.schedule import get_schedule_period
 
@@ -24,10 +24,16 @@ class ScheduleController(Controller[PydanticSerializer]):
 
 
 class DeadlineContoller(Controller[PydanticSerializer]):
-    def create(
+    @modify(
+        status_code=HTTPStatus.CREATED,
+        extra_responses=[
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.CONFLICT),
+        ],
+    )
+    def post(
         self, parsed_body: Body[DeadlineRequest]
-    ) -> DeadlineResponse | JsonResponse:
-        group, _ = Group.objects.get_or_creat(name=parsed_body.group)
+    ) -> DeadlineResponse:
+        group, _ = Group.objects.get_or_create(name=parsed_body.group)
         deadline, created = Deadline.objects.get_or_create(
             date=parsed_body.date,
             subject=parsed_body.subject,
@@ -35,11 +41,17 @@ class DeadlineContoller(Controller[PydanticSerializer]):
             group=group,
         )
         if created:
-            return deadline
+            return DeadlineResponse(
+                id=deadline.pk,
+                date=deadline.date,
+                subject=deadline.subject,
+                deadline=deadline.deadline,
+                group=group.name,
+            )
 
-        return JsonResponse(
+        raise APIError(
             {"detail": "Такая запись уже существует"},
-            status=409,
+            status_code=HTTPStatus.CONFLICT,
         )
 
     @validate(

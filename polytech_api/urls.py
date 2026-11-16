@@ -13,7 +13,12 @@ router = Router(
             "schedule/",
             views.ScheduleController.as_view(),
             name="schedule",
-        )
+        ),
+        path(
+            "deadline/",
+            views.DeadlineContoller.as_view(),
+            name="deadline",
+        ),
     ],
 )
 
