@@ -1,7 +1,7 @@
 from datetime import date
 
 from parser.schemas import Lesson
-from pydantic import BaseModel, Field, RootModel, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
 
 
 class ScheduleRequest(BaseModel):
@@ -18,3 +18,16 @@ class ScheduleRequest(BaseModel):
 
 class ScheduleResponse(RootModel[list[Lesson]]):
     pass
+
+
+class DeadlineRequest(BaseModel):
+    date: date
+    subject: str
+    deadline: str
+    group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
+
+
+class DeadlineResponse(DeadlineRequest):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
