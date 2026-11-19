@@ -10,9 +10,11 @@ Django API для расписания учебных групп и дедлай
 test -f .env || cp template.env .env
 ```
 
-После настройки запустите контейнеры.
+После настройки создайте общую сеть `poly-shared`, если она ещё не существует,
+и запустите контейнеры.
 
 ```bash
+docker network inspect poly-shared >/dev/null 2>&1 || docker network create poly-shared
 docker compose up --build
 ```
 

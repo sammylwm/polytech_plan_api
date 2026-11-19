@@ -8,6 +8,9 @@ services:
       - .env
     ports:
       - "8000:8000"
+    networks:
+      - default
+      - shared
     volumes:
       - media:/app/media
     depends_on:
