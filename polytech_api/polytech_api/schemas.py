@@ -1,13 +1,26 @@
-from datetime import date
+import re
+from datetime import date as Date
+from typing import Annotated
 
 from parser.schemas import Lesson
-from pydantic import BaseModel, ConfigDict, Field, RootModel, model_validator
+from pydantic import BaseModel, BeforeValidator, Field, RootModel, model_validator
+
+
+def validate_date_format(value: object) -> str:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value
+    ):
+        raise ValueError("Дата должна быть в формате YYYY-MM-DD")
+    return value
+
+
+IsoDate = Annotated[Date, BeforeValidator(validate_date_format)]
 
 
 class ScheduleRequest(BaseModel):
     group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
-    start: date = Field(default_factory=date.today)
-    end: date = Field(default_factory=date.today)
+    start: IsoDate = Field(default_factory=Date.today)
+    end: IsoDate = Field(default_factory=Date.today)
 
     @model_validator(mode="after")
     def validate_period(self) -> "ScheduleRequest":
@@ -25,7 +38,7 @@ class DeadlineRequest(ScheduleRequest):
 
 
 class DeadlineCreateRequest(DeadlineRequest):
-    date: date
+    date: IsoDate
     subject: str
     deadline: str
 
@@ -34,7 +47,13 @@ class DeadlineDeleteRequest(BaseModel):
     id: int
 
 
-class DeadlineResponse(RootModel[list[DeadlineCreateRequest]]):
-    model_config = ConfigDict(from_attributes=True)
-
+class DeadlineItem(BaseModel):
     id: int
+    date: Date
+    subject: str
+    deadline: str
+    group: str
+
+
+class DeadlineResponse(RootModel[list[DeadlineItem]]):
+    pass

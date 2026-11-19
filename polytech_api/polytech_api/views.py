@@ -9,6 +9,7 @@ from parser.schedule import get_schedule_period
 from .schemas import (
     DeadlineCreateRequest,
     DeadlineDeleteRequest,
+    DeadlineItem,
     DeadlineRequest,
     DeadlineResponse,
     ScheduleRequest,
@@ -25,17 +26,31 @@ class ScheduleController(Controller[PydanticSerializer]):
 
 
 class DeadlineContoller(Controller[PydanticSerializer]):
+    def get(self, parsed_query: Query[DeadlineRequest]) -> DeadlineResponse:
+        deadlines = Deadline.objects.filter(
+            group__name=parsed_query.group,
+            date__range=(parsed_query.start, parsed_query.end),
+        )
+        return DeadlineResponse(
+            root=[
+                DeadlineItem(
+                    id=deadline.pk,
+                    date=deadline.date,
+                    subject=deadline.subject,
+                    deadline=deadline.deadline,
+                    group=parsed_query.group,
+                )
+                for deadline in deadlines
+            ]
+        )
+
     @modify(
         status_code=HTTPStatus.CREATED,
         extra_responses=[
             ResponseSpec(dict[str, str], status_code=HTTPStatus.CONFLICT),
         ],
     )
-    def get(self, parsed_query: Body[DeadlineRequest]) -> DeadlineResponse:
-        group, _ = Group.objects.get_or_create(name=parsed_query.group)
-        Deadline.objects.filger(parsed_query.start <= date >= parsed_query.end)
-
-    def post(self, parsed_body: Body[DeadlineCreateRequest]) -> DeadlineResponse:
+    def post(self, parsed_body: Body[DeadlineCreateRequest]) -> DeadlineItem:
         group, _ = Group.objects.get_or_create(name=parsed_body.group)
         deadline, created = Deadline.objects.get_or_create(
             date=parsed_body.date,
@@ -44,7 +59,7 @@ class DeadlineContoller(Controller[PydanticSerializer]):
             group=group,
         )
         if created:
-            return DeadlineResponse(
+            return DeadlineItem(
                 id=deadline.pk,
                 date=deadline.date,
                 subject=deadline.subject,
