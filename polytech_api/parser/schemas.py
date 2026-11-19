@@ -1,7 +1,12 @@
 from datetime import date as Date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+
+
+class PairTime(BaseModel):
+    start: str
+    end: str
 
 
 class Lesson(BaseModel):
@@ -19,6 +24,11 @@ class Lesson(BaseModel):
     date_to: Date | None = None
     date: Date | None = None
     link: str | None = None
+
+    @computed_field
+    @property
+    def pair_time(self) -> PairTime:
+        return PairTime(start=self.start, end=self.end)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "Lesson":

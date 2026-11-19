@@ -1,6 +1,10 @@
+from datetime import datetime
 from http import HTTPStatus
 
+from deadlines.ai import DeadlineAIError, DeadlineClarificationRequired, parse_homework
 from deadlines.models import Deadline, Group
+from deadlines.services import confirm_deadline
+from django.db import transaction
 from django.db.models import QuerySet
 from django.http import JsonResponse
 from dmr import APIError, Body, Controller, Query, ResponseSpec, modify, validate
@@ -8,9 +12,13 @@ from dmr.plugins.pydantic import PydanticSerializer
 from parser.schedule import get_schedule_period
 
 from .schemas import (
+    DeadlineConfirmRequest,
+    DeadlineConfirmResponse,
     DeadlineCreateRequest,
     DeadlineDeleteRequest,
     DeadlineItem,
+    DeadlineParseRequest,
+    DeadlinePreview,
     DeadlineRequest,
     DeadlineResponse,
     ScheduleRequest,
@@ -63,13 +71,16 @@ class DeadlineContoller(Controller[PydanticSerializer]):
         ],
     )
     def post(self, parsed_body: Body[DeadlineCreateRequest]) -> DeadlineItem:
-        group, _ = Group.objects.get_or_create(name=parsed_body.group)
-        deadline, created = Deadline.objects.get_or_create(
-            date=parsed_body.date,
-            subject=parsed_body.subject,
-            deadline=parsed_body.deadline,
-            group=group,
-        )
+        with transaction.atomic():
+            group, _ = Group.objects.select_for_update().get_or_create(
+                name=parsed_body.group
+            )
+            deadline, created = Deadline.objects.get_or_create(
+                date=parsed_body.date,
+                subject=parsed_body.subject,
+                deadline=parsed_body.deadline,
+                group=group,
+            )
         if created:
             return deadline_item(deadline, group.name)
 
@@ -88,3 +99,58 @@ class DeadlineContoller(Controller[PydanticSerializer]):
         if not deleted:
             return JsonResponse({"detail": "Запись не найдена"}, status=404)
         return JsonResponse({"detail": "Запись удалена"})
+
+
+class DeadlineParseController(Controller[PydanticSerializer]):
+    @modify(
+        status_code=HTTPStatus.OK,
+        extra_responses=[
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.UNPROCESSABLE_ENTITY),
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.SERVICE_UNAVAILABLE),
+        ],
+    )
+    def post(self, parsed_body: Body[DeadlineParseRequest]) -> DeadlinePreview:
+        try:
+            homework = parse_homework(parsed_body.text, parsed_body.group)
+        except DeadlineClarificationRequired as exc:
+            raise APIError(
+                {"detail": str(exc)}, status_code=HTTPStatus.UNPROCESSABLE_ENTITY
+            ) from exc
+        except DeadlineAIError as exc:
+            raise APIError(
+                {"detail": "Не удалось обработать дедлайн. Попробуй позже."},
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            ) from exc
+        return DeadlinePreview(
+            group=parsed_body.group,
+            date=datetime.strptime(homework.date, "%d-%m-%Y").date(),
+            subject=homework.subject.strip(),
+            deadline=homework.homework.strip(),
+        )
+
+
+class DeadlineConfirmController(Controller[PydanticSerializer]):
+    @modify(
+        status_code=HTTPStatus.OK,
+        extra_responses=[
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.SERVICE_UNAVAILABLE),
+        ],
+    )
+    def post(
+        self, parsed_body: Body[DeadlineConfirmRequest]
+    ) -> DeadlineConfirmResponse:
+        try:
+            status, deadline = confirm_deadline(
+                parsed_body.group,
+                parsed_body.date,
+                parsed_body.subject,
+                parsed_body.deadline,
+            )
+        except DeadlineAIError as exc:
+            raise APIError(
+                {"detail": "Не удалось проверить совпадения. Попробуй позже."},
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            ) from exc
+        return DeadlineConfirmResponse(
+            status=status, deadline=deadline_item(deadline, parsed_body.group)
+        )

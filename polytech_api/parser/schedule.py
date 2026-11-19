@@ -133,7 +133,7 @@ def find_deadlines(lessons: list[Lesson], start: date, end: date) -> list[Deadli
         if kind is not None and lesson.date is not None:
             deadlines.append(
                 Deadline(
-                    **lesson.model_dump(),
+                    **lesson.model_dump(exclude_computed_fields=True),
                     kind=kind,
                     days_left=(lesson.date - start).days,
                 )

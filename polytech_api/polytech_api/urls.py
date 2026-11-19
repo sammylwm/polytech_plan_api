@@ -19,6 +19,16 @@ router = Router(
             views.DeadlineContoller.as_view(),
             name="deadline",
         ),
+        path(
+            "deadline/parse/",
+            views.DeadlineParseController.as_view(),
+            name="deadline-parse",
+        ),
+        path(
+            "deadline/confirm/",
+            views.DeadlineConfirmController.as_view(),
+            name="deadline-confirm",
+        ),
     ],
 )
 

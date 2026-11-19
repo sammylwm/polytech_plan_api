@@ -1,9 +1,16 @@
 import re
 from datetime import date as Date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from parser.schemas import Lesson
-from pydantic import BaseModel, BeforeValidator, Field, RootModel, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    RootModel,
+    StringConstraints,
+    model_validator,
+)
 
 
 def validate_date_format(value: object) -> str:
@@ -43,6 +50,28 @@ class DeadlineDeleteRequest(BaseModel):
     id: int
 
 
+NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
+class DeadlineParseRequest(BaseModel):
+    group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
+    text: NonBlankText
+
+
+class DeadlineConfirmRequest(BaseModel):
+    group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
+    date: IsoDate
+    subject: NonBlankText
+    deadline: NonBlankText
+
+
+class DeadlinePreview(BaseModel):
+    group: str
+    date: Date
+    subject: str
+    deadline: str
+
+
 class DeadlineItem(BaseModel):
     id: int
     date: Date
@@ -53,6 +82,11 @@ class DeadlineItem(BaseModel):
 
 class DeadlineResponse(RootModel[list[DeadlineItem]]):
     pass
+
+
+class DeadlineConfirmResponse(BaseModel):
+    status: Literal["created", "updated", "unchanged"]
+    deadline: DeadlineItem
 
 
 class ScheduleResponse(BaseModel):
