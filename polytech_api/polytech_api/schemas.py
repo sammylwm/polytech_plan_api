@@ -20,18 +20,21 @@ class ScheduleResponse(RootModel[list[Lesson]]):
     pass
 
 
-class DeadlineRequest(BaseModel):
+class DeadlineRequest(ScheduleRequest):
+    pass
+
+
+class DeadlineCreateRequest(DeadlineRequest):
     date: date
     subject: str
     deadline: str
-    group: str = Field(pattern=r"^[0-9]{3}-[0-9]{3}$")
 
 
 class DeadlineDeleteRequest(BaseModel):
     id: int
 
 
-class DeadlineResponse(DeadlineRequest):
+class DeadlineResponse(RootModel[list[DeadlineCreateRequest]]):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

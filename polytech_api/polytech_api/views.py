@@ -7,6 +7,7 @@ from dmr.plugins.pydantic import PydanticSerializer
 from parser.schedule import get_schedule_period
 
 from .schemas import (
+    DeadlineCreateRequest,
     DeadlineDeleteRequest,
     DeadlineRequest,
     DeadlineResponse,
@@ -30,9 +31,11 @@ class DeadlineContoller(Controller[PydanticSerializer]):
             ResponseSpec(dict[str, str], status_code=HTTPStatus.CONFLICT),
         ],
     )
-    def post(
-        self, parsed_body: Body[DeadlineRequest]
-    ) -> DeadlineResponse:
+    def get(self, parsed_query: Body[DeadlineRequest]) -> DeadlineResponse:
+        group, _ = Group.objects.get_or_create(name=parsed_query.group)
+        Deadline.objects.filger(parsed_query.start <= date >= parsed_query.end)
+
+    def post(self, parsed_body: Body[DeadlineCreateRequest]) -> DeadlineResponse:
         group, _ = Group.objects.get_or_create(name=parsed_body.group)
         deadline, created = Deadline.objects.get_or_create(
             date=parsed_body.date,
