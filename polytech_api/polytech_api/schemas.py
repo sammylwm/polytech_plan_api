@@ -29,10 +29,6 @@ class ScheduleRequest(BaseModel):
         return self
 
 
-class ScheduleResponse(RootModel[list[Lesson]]):
-    pass
-
-
 class DeadlineRequest(ScheduleRequest):
     pass
 
@@ -57,3 +53,8 @@ class DeadlineItem(BaseModel):
 
 class DeadlineResponse(RootModel[list[DeadlineItem]]):
     pass
+
+
+class ScheduleResponse(BaseModel):
+    lessons: list[Lesson]
+    deadlines: list[DeadlineItem]
