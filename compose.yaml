@@ -19,7 +19,7 @@ services:
     env_file:
       - .env
     volumes:
-      - polytech_api:/var/lib/postgresql/data
+      - polytech_plan:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -27,5 +27,11 @@ services:
       retries: 10
 
 volumes:
-  polytech_api:
+  polytech_plan:
   media:
+
+  
+networks:
+  shared:
+    external: true
+    name: poly-shared
