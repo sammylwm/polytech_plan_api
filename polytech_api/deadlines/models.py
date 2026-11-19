@@ -22,6 +22,18 @@ class Deadline(models.Model):
     )
 
 
+class SessionTask(models.Model):
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.PROTECT,
+        related_name="session_tasks",
+    )
+    semester = models.CharField(max_length=6)
+    subject = models.CharField(max_length=200)
+    text = models.TextField()
+    due_date = models.DateField(null=True, blank=True)
+
+
 class DeadlineAttachment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     deadline = models.ForeignKey(

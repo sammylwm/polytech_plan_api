@@ -20,6 +20,11 @@ router = Router(
             name="deadline",
         ),
         path(
+            "session-task/",
+            views.SessionTaskController.as_view(),
+            name="session-task",
+        ),
+        path(
             "deadline/parse/",
             views.DeadlineParseController.as_view(),
             name="deadline-parse",

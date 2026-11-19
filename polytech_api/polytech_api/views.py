@@ -1,13 +1,21 @@
 from datetime import datetime
 from http import HTTPStatus
+from itertools import groupby
+from operator import attrgetter
 from typing import Annotated
 from uuid import UUID
 
-from deadlines.ai import DeadlineAIError, DeadlineClarificationRequired, parse_homework
+from deadlines.ai import (
+    DeadlineAIError,
+    DeadlineClarificationRequired,
+    parse_homework,
+    parse_session_tasks,
+)
 from deadlines.attachments import attachment_transaction, attachment_uploads
-from deadlines.models import Deadline, DeadlineAttachment, Group
+from deadlines.models import Deadline, DeadlineAttachment, Group, SessionTask
 from deadlines.services import confirm_deadline
 from django.conf import settings
+from django.db import transaction
 from django.db.models import QuerySet
 from django.http import FileResponse, Http404, HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -34,6 +42,12 @@ from .schemas import (
     DeadlineResponse,
     ScheduleRequest,
     ScheduleResponse,
+    SessionSubjectItem,
+    SessionTaskCreateRequest,
+    SessionTaskItem,
+    SessionTaskRequest,
+    SessionTaskResponse,
+    SessionTaskTextRequest,
 )
 
 
@@ -161,6 +175,123 @@ class DeadlineContoller(Controller[PydanticSerializer]):
     def delete(self, parsed_query: Query[DeadlineDeleteRequest]) -> JsonResponse:
         deleted, _ = Deadline.objects.filter(id=parsed_query.id).delete()
 
+        if not deleted:
+            return JsonResponse({"detail": "Запись не найдена"}, status=404)
+        return JsonResponse({"detail": "Запись удалена"})
+
+
+def session_task_item(task: SessionTask, group: str) -> SessionTaskItem:
+    return SessionTaskItem(
+        id=task.pk,
+        group=group,
+        semester=task.semester,
+        subject=task.subject,
+        text=task.text,
+        due_date=task.due_date,
+    )
+
+
+def session_subject_item(
+    subject: str, tasks: list[SessionTaskItem]
+) -> SessionSubjectItem:
+    return SessionSubjectItem(
+        subject=subject,
+        text="\n".join(f"{number}. {task.text}" for number, task in enumerate(tasks, 1)),
+        tasks=tasks,
+    )
+
+
+class SessionTaskController(Controller[PydanticSerializer]):
+    parsers = (JsonParser(),)
+
+    def get(self, parsed_query: Query[SessionTaskRequest]) -> SessionTaskResponse:
+        tasks = SessionTask.objects.filter(
+            group__name=parsed_query.group,
+            semester=parsed_query.semester,
+        ).order_by("subject", "pk")
+        return SessionTaskResponse(
+            root=[
+                session_subject_item(
+                    subject, [session_task_item(task, parsed_query.group) for task in items]
+                )
+                for subject, items in groupby(tasks, key=attrgetter("subject"))
+            ]
+        )
+
+    @modify(
+        status_code=HTTPStatus.CREATED,
+        extra_responses=[
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.CONFLICT),
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.UNPROCESSABLE_ENTITY),
+            ResponseSpec(dict[str, str], status_code=HTTPStatus.SERVICE_UNAVAILABLE),
+        ],
+    )
+    def post(
+        self, parsed_body: Body[SessionTaskCreateRequest | SessionTaskTextRequest]
+    ) -> SessionTaskItem | SessionSubjectItem:
+        if isinstance(parsed_body, SessionTaskTextRequest):
+            return self.add_from_text(parsed_body)
+
+        with transaction.atomic():
+            group, _ = Group.objects.select_for_update().get_or_create(
+                name=parsed_body.group
+            )
+            task, created = SessionTask.objects.get_or_create(
+                group=group,
+                semester=parsed_body.semester,
+                subject=parsed_body.subject,
+                text=parsed_body.text,
+                due_date=parsed_body.due_date,
+            )
+            if not created:
+                raise APIError(
+                    {"detail": "Такая запись уже существует"},
+                    status_code=HTTPStatus.CONFLICT,
+                )
+        return session_task_item(task, parsed_body.group)
+
+    def add_from_text(self, request: SessionTaskTextRequest) -> SessionSubjectItem:
+        existing_subjects = list(
+            SessionTask.objects.filter(
+                group__name=request.group, semester=request.semester
+            ).order_by("subject").values_list("subject", flat=True).distinct()
+        )
+        try:
+            parsed = parse_session_tasks(request.text, request.group, existing_subjects)
+        except DeadlineClarificationRequired as exc:
+            raise APIError(
+                {"detail": str(exc)}, status_code=HTTPStatus.UNPROCESSABLE_ENTITY
+            ) from exc
+        except DeadlineAIError as exc:
+            raise APIError(
+                {"detail": "Не удалось обработать задания через ИИ. Попробуй позже."},
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            ) from exc
+
+        with transaction.atomic():
+            group, _ = Group.objects.select_for_update().get_or_create(name=request.group)
+            tasks = SessionTask.objects.filter(
+                group=group, semester=request.semester, subject=parsed.subject
+            )
+            for item in parsed.tasks:
+                tasks.get_or_create(
+                    group=group,
+                    semester=request.semester,
+                    subject=parsed.subject,
+                    text=item.text,
+                    due_date=item.due_date,
+                )
+            return session_subject_item(
+                parsed.subject,
+                [session_task_item(task, request.group) for task in tasks.order_by("pk")],
+            )
+
+    @validate(
+        ResponseSpec(dict[str, str], status_code=HTTPStatus.OK),
+        ResponseSpec(dict[str, str], status_code=HTTPStatus.NOT_FOUND),
+    )
+    def delete(self, parsed_query: Query[DeadlineDeleteRequest]) -> JsonResponse:
+        deleted, _ = SessionTask.objects.filter(pk=parsed_query.id).delete()
         if not deleted:
             return JsonResponse({"detail": "Запись не найдена"}, status=404)
         return JsonResponse({"detail": "Запись удалена"})
