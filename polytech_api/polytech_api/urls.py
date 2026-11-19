@@ -36,6 +36,11 @@ schema = build_schema(router)
 
 urlpatterns = [
     router.to_urlpatterns(),
+    path(
+        "api/deadline/attachments/<uuid:attachment_id>/",
+        views.download_attachment,
+        name="deadline-attachment",
+    ),
     path("admin/", admin.site.urls),
     path("docs/openapi.json/", OpenAPIJsonView.as_view(schema), name="openapi"),
     path("docs/swagger/", SwaggerView.as_view(schema), name="swagger"),

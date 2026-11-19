@@ -9,6 +9,7 @@ from pydantic import (
     Field,
     RootModel,
     StringConstraints,
+    WithJsonSchema,
     model_validator,
 )
 
@@ -72,12 +73,36 @@ class DeadlinePreview(BaseModel):
     deadline: str
 
 
+class MultipartAttachments(BaseModel):
+    attachments: list[
+        Annotated[str, WithJsonSchema({"type": "string", "format": "binary"})]
+    ] = Field(
+        default_factory=list,
+        description="До пяти вложений по 20 МиБ. Добавьте отдельный элемент для каждого файла.",
+    )
+
+
+class DeadlineCreateForm(DeadlineCreateRequest, MultipartAttachments):
+    pass
+
+
+class DeadlineConfirmForm(DeadlineConfirmRequest, MultipartAttachments):
+    pass
+
+
+class AttachmentItem(BaseModel):
+    name: str
+    size: int
+    url: str
+
+
 class DeadlineItem(BaseModel):
     id: int
     date: Date
     subject: str
     deadline: str
     group: str
+    attachments: list[AttachmentItem]
 
 
 class DeadlineResponse(RootModel[list[DeadlineItem]]):
