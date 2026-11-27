@@ -99,6 +99,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-unfold"
+version = "0.111.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4b/b5/3c862ed519b6420e637a702a2abd7e373e35c45da91afe03b39fbde93805/django_unfold-0.111.0.tar.gz", hash = "sha256:f7b85a9e1154d263679570d4146a72ef8faddca335d739fe27fa67c025a5d622", size = 1173532, upload-time = "2026-11-25T11:58:09.762Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/62/2c10954365974cf3a0bae1b2cc43a40440db1a5e58fc7cf7c9d9e99472a5/django_unfold-0.111.0-py3-none-any.whl", hash = "sha256:ef4f9b2b75bd51f8d8c5d9fb8c7ce40e349921c7d2bb79b739dd58a9db7f7308", size = 1302567, upload-time = "2026-11-25T11:58:08.476Z" },
+]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -243,22 +255,26 @@ source = { virtual = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "django-modern-rest" },
+    { name = "django-unfold" },
     { name = "httpx" },
     { name = "lxml" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "uwsgi" },
+    { name = "whitenoise" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.15.0" },
     { name = "django-modern-rest", specifier = ">=0.17.0" },
+    { name = "django-unfold", specifier = ">=0.111.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "lxml", specifier = ">=6.1.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.9" },
     { name = "pydantic", specifier = ">=2.14.3" },
     { name = "uwsgi", specifier = ">=2.0.31" },
+    { name = "whitenoise", specifier = ">=6.12.0" },
 ]
 
 [[package]]
@@ -476,3 +492,12 @@ name = "uwsgi"
 version = "2.0.31"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9f/49/2f57640e889ba509fd1fae10cccec1b58972a07c2724486efba94c5ea448/uwsgi-2.0.31.tar.gz", hash = "sha256:e8f8b350ccc106ff93a65247b9136f529c14bf96b936ac5b264c6ff9d0c76257", size = 822796, upload-time = "2025-10-11T19:17:28.794Z" }
+
+[[package]]
+name = "whitenoise"
+version = "6.12.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/2a/55b3f3a4ec326cd077c1c3defeee656b9298372a69229134d930151acd01/whitenoise-6.12.0.tar.gz", hash = "sha256:f723ebb76a112e98816ff80fcea0a6c9b8ecde835f8ddda25df7a30a3c2db6ad", size = 26841, upload-time = "2026-02-27T00:05:42.028Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/eb/d5583a11486211f3ebd4b385545ae787f32363d453c19fffd81106c9c138/whitenoise-6.12.0-py3-none-any.whl", hash = "sha256:fc5e8c572e33ebf24795b47b6a7da8da3c00cff2349f5b04c02f28d0cc5a3cc2", size = 20302, upload-time = "2026-02-27T00:05:40.086Z" },
+]
