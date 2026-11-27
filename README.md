@@ -11,14 +11,25 @@ test -f .env || cp template.env .env
 ```
 
 После настройки создайте общую сеть `poly-shared`, если она ещё не существует,
-и запустите контейнеры.
+и запустите production-контейнеры.
 
 ```bash
 docker network inspect poly-shared >/dev/null 2>&1 || docker network create poly-shared
-docker compose up --build
+docker compose up -d --build
 ```
 
-API доступен на `http://localhost:8000`. Контейнер применяет миграции при запуске.
+Контейнер запускает Django через uWSGI на порту `8000` и применяет миграции при старте.
+Посмотреть состояние и логи можно командами:
+
+```bash
+docker compose ps
+docker compose logs -f api
+```
+
+API доступен на `http://localhost:8000`. Для внешнего production-сервера замените
+`DJANGO_ALLOWED_HOSTS` в `.env` на домен API и поставьте перед контейнером HTTPS
+reverse proxy (например, Nginx). Чтобы остановить сервисы, выполните
+`docker compose down`; данные PostgreSQL и загруженные файлы останутся в volumes.
 
 - Swagger UI доступен по `/docs/swagger/`.
 - Схема OpenAPI доступна по `/docs/openapi.json/`.
